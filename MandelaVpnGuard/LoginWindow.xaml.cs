@@ -1,6 +1,6 @@
 using System.Media;
+using System.ComponentModel;
 using System.Windows;
-using System.Windows.Input;
 using System.Windows.Media;
 using System.Windows.Threading;
 using Color = System.Windows.Media.Color;
@@ -15,11 +15,12 @@ public partial class LoginWindow : Window
     private readonly DispatcherTimer _dialTimer;
     private DateTime _dialStart;
     private bool _suppressStartupEvent;
+    private bool _allowClose;
     private const int DialTimeoutSeconds = 12;
 
-    public bool UserRequestedExit { get; private set; }
+    public event EventHandler? DisconnectRequested;
 
-    public LoginWindow(string vpnName, bool isTrip, string tripStamp, bool autoDialOnOpen)
+    public LoginWindow(string vpnName, bool initiallyConnected, bool autoDialOnOpen, bool showCredentials)
     {
         InitializeComponent();
 
@@ -32,26 +33,19 @@ public partial class LoginWindow : Window
         ChkStartup.IsChecked = StartupManager.IsEnabled();
         _suppressStartupEvent = false;
 
-        if (isTrip)
-        {
-            OuterBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(239, 68, 68));
-            BadgeBorder.Background = new SolidColorBrush(Color.FromRgb(63, 21, 27));
-            BadgeText.Foreground = new SolidColorBrush(Color.FromRgb(252, 165, 165));
-            BadgeText.Text = "VPN TRIPPED • DNS LEAK GUARD ACTIVE";
-            SubText.Text = $"Disconnected at {tripStamp}. Press Enter to reconnect with saved credentials or type a new password.";
-            SystemSounds.Hand.Play();
-        }
+        ShowInTaskbar = true;
+        UpdateWatchdogStatus(initiallyConnected);
+        CredentialsPanel.Visibility = showCredentials ? Visibility.Visible : Visibility.Collapsed;
 
         _dialTimer = new DispatcherTimer { Interval = TimeSpan.FromMilliseconds(30) };
         _dialTimer.Tick += DialTimer_Tick;
 
-        MouseLeftButtonDown += (_, e) => { if (e.ButtonState == MouseButtonState.Pressed) DragMove(); };
         Loaded += (_, _) =>
         {
             Activate();
             TxtPass.Focus();
             if (_autoDialOnOpen)
-                StartDial();
+                BeginReconnect();
         };
         Closed += (_, _) =>
         {
@@ -66,10 +60,16 @@ public partial class LoginWindow : Window
         if (NativeRas.IsDialing)
             return;
 
+        if (NativeRas.IsVpnConnected(_vpnName))
+        {
+            UpdateWatchdogStatus(connected: true);
+            return;
+        }
+
         BtnConnect.IsEnabled = false;
         BtnConnect.Content = "Connecting...";
         TxtStatus.Foreground = new SolidColorBrush(Color.FromRgb(56, 189, 248));
-        TxtStatus.Text = "Initializing native RAS tunnel...";
+        TxtStatus.Text = "Connecting...";
         TxtStatus.Visibility = Visibility.Visible;
 
         _dialStart = DateTime.UtcNow;
@@ -79,23 +79,22 @@ public partial class LoginWindow : Window
 
     private void DialTimer_Tick(object? sender, EventArgs e)
     {
-        if (NativeRas.DialSucceeded || NativeRas.IsVpnConnected(_vpnName))
-        {
-            _dialTimer.Stop();
-            DialogResult = true;
-            Close();
+        if (TryShowConnected())
             return;
-        }
 
         if (!NativeRas.IsDialing)
         {
+            if (TryShowConnected())
+                return;
+
             _dialTimer.Stop();
             TxtStatus.Foreground = new SolidColorBrush(Color.FromRgb(248, 113, 113));
             TxtStatus.Text = string.IsNullOrWhiteSpace(NativeRas.ErrorMessage)
-                ? "Connection closed before completing."
-                : NativeRas.ErrorMessage;
+                ? "Couldn't connect. Check your password or connection."
+                : $"Couldn't connect: {NativeRas.ErrorMessage}";
             BtnConnect.IsEnabled = true;
-            BtnConnect.Content = "Reconnect Tunnel";
+            BtnConnect.Content = "Connect";
+            CredentialsPanel.Visibility = Visibility.Visible;
             TxtPass.Clear();
             TxtPass.Focus();
             return;
@@ -107,30 +106,129 @@ public partial class LoginWindow : Window
             _dialTimer.Stop();
             NativeRas.HangUpAndClosePort(_vpnName);
             TxtStatus.Foreground = new SolidColorBrush(Color.FromRgb(248, 113, 113));
-            TxtStatus.Text = $"Timed out after {DialTimeoutSeconds}s (at: {NativeRas.StateText}). Port closed; ready to retry.";
+            TxtStatus.Text = "Connection timed out. Check your password or connection.";
             BtnConnect.IsEnabled = true;
-            BtnConnect.Content = "Reconnect Tunnel";
+            BtnConnect.Content = "Connect";
+            CredentialsPanel.Visibility = Visibility.Visible;
             TxtPass.Focus();
             return;
         }
 
-        TxtStatus.Text = $"{NativeRas.StateText} ({elapsed:F1}s)";
+        TxtStatus.Text = $"Connecting... ({elapsed:F1}s)";
     }
 
-    private void BtnConnect_Click(object sender, RoutedEventArgs e) => StartDial();
+    private bool TryShowConnected()
+    {
+        if (!NativeRas.DialSucceeded && !NativeRas.IsVpnConnected(_vpnName))
+            return false;
+
+        _dialTimer.Stop();
+        UpdateWatchdogStatus(connected: true);
+        BtnConnect.IsEnabled = true;
+        BtnConnect.Content = "Connect";
+        TxtPass.Clear();
+        CredentialsPanel.Visibility = Visibility.Collapsed;
+        return true;
+    }
+
+    private void BtnConnect_Click(object sender, RoutedEventArgs e)
+    {
+        if (string.Equals(BtnConnect.Content?.ToString(), "Disconnect", StringComparison.Ordinal))
+            DisconnectRequested?.Invoke(this, EventArgs.Empty);
+        else
+            StartDial();
+    }
 
     private void BtnMinimize_Click(object sender, RoutedEventArgs e)
     {
-        DialogResult = false;
-        Close();
+        WindowState = WindowState.Minimized;
     }
 
     private void BtnExit_Click(object sender, RoutedEventArgs e)
     {
-        UserRequestedExit = true;
-        NativeRas.HangUpAndClosePort(_vpnName);
-        DialogResult = false;
+        _allowClose = true;
         Close();
+    }
+
+    public void BeginReconnect()
+    {
+        CredentialsPanel.Visibility = Visibility.Collapsed;
+        TxtPass.Clear();
+        StartDial();
+    }
+
+    public void SetManuallyDisconnected()
+    {
+        UpdateWatchdogStatus(connected: false);
+        SubText.Text = "Disconnected.";
+        TxtStatus.Text = "Disconnected.";
+        CredentialsPanel.Visibility = Visibility.Collapsed;
+    }
+
+    public void AllowApplicationExit() => _allowClose = true;
+
+    protected override void OnClosing(CancelEventArgs e)
+    {
+        if (!_allowClose)
+        {
+            e.Cancel = true;
+            ShowInTaskbar = true;
+            WindowState = WindowState.Minimized;
+            return;
+        }
+
+        base.OnClosing(e);
+    }
+
+    public void UpdateWatchdogStatus(bool connected, bool isTrip = false, string tripStamp = "")
+    {
+        if (connected)
+        {
+            OuterBorder.BorderBrush = new SolidColorBrush(Color.FromRgb(16, 185, 129));
+            BadgeBorder.Background = new SolidColorBrush(Color.FromRgb(6, 55, 42));
+            BadgeText.Foreground = new SolidColorBrush(Color.FromRgb(110, 231, 183));
+            BadgeText.Text = "MANDELA VPN • CONNECTED";
+            SubText.Text = "Connected.";
+            TxtStatus.Foreground = new SolidColorBrush(Color.FromRgb(110, 231, 183));
+            TxtStatus.Text = "Connected.";
+            TxtStatus.Visibility = Visibility.Visible;
+            CredentialsPanel.Visibility = Visibility.Collapsed;
+            BtnConnect.IsEnabled = true;
+            BtnConnect.Content = "Disconnect";
+            return;
+        }
+
+        OuterBorder.BorderBrush = new SolidColorBrush(isTrip
+            ? Color.FromRgb(239, 68, 68)
+            : Color.FromRgb(56, 189, 248));
+        BadgeBorder.Background = new SolidColorBrush(isTrip
+            ? Color.FromRgb(63, 21, 27)
+            : Color.FromRgb(23, 37, 84));
+        BadgeText.Foreground = new SolidColorBrush(isTrip
+            ? Color.FromRgb(252, 165, 165)
+            : Color.FromRgb(147, 197, 253));
+        BadgeText.Text = isTrip
+            ? "CONNECTION LOST"
+            : "MANDELA VPN";
+
+        if (isTrip)
+        {
+            SubText.Text = $"Connection lost at {tripStamp}. Reconnecting...";
+            TxtStatus.Foreground = new SolidColorBrush(Color.FromRgb(248, 113, 113));
+            TxtStatus.Text = "Reconnecting...";
+            SystemSounds.Hand.Play();
+        }
+        else
+        {
+            SubText.Text = "Connect with your saved login or enter your password.";
+            TxtStatus.Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184));
+            TxtStatus.Text = "Not connected.";
+        }
+        TxtStatus.Visibility = Visibility.Visible;
+        BtnConnect.IsEnabled = true;
+        BtnConnect.Content = "Connect";
+        if (isTrip)
+            CredentialsPanel.Visibility = Visibility.Visible;
     }
 
     private void ChkStartup_Changed(object sender, RoutedEventArgs e)

@@ -8,12 +8,19 @@ namespace MandelaVpnGuard;
 public partial class App : System.Windows.Application
 {
     private const string VpnName = NativeRas.DefaultVpnName;
+    private const string MutexName = @"Global\MandelaVpnGuard_Mutex";
+    private const string WakeEventName = @"Global\MandelaVpnGuard_Wake";
+    private const string ShutdownEventName = @"Global\MandelaVpnGuard_Shutdown";
     private Mutex? _singleInstanceMutex;
     private EventWaitHandle? _wakeEvent;
+    private EventWaitHandle? _shutdownEvent;
     private Forms.NotifyIcon? _trayIcon;
     private Forms.ToolStripMenuItem? _startupMenuItem;
+    private Icon? _applicationIcon;
     private CancellationTokenSource? _cts;
-    private bool _promptOpen;
+    private LoginWindow? _mainWindow;
+    private bool _isExiting;
+    private int _intentionalDisconnect;
 
     protected override void OnStartup(StartupEventArgs e)
     {
@@ -21,8 +28,24 @@ public partial class App : System.Windows.Application
 
         try
         {
-            _singleInstanceMutex = new Mutex(true, @"Global\MandelaVpnGuard_Mutex", out bool createdNew);
-            _wakeEvent = new EventWaitHandle(false, EventResetMode.AutoReset, @"Global\MandelaVpnGuard_Wake");
+            if (e.Args.Contains("--shutdown", StringComparer.OrdinalIgnoreCase))
+            {
+                try
+                {
+                    if (!RequestShutdownAndWait())
+                        Environment.ExitCode = 1;
+                }
+                catch (Exception ex)
+                {
+                    Environment.ExitCode = 1;
+                    MessageBox.Show(ex.Message, "Could not close Mandela VPN Guard", MessageBoxButton.OK, MessageBoxImage.Error);
+                }
+                Shutdown();
+                return;
+            }
+
+            _singleInstanceMutex = new Mutex(true, MutexName, out bool createdNew);
+            _wakeEvent = new EventWaitHandle(false, EventResetMode.AutoReset, WakeEventName);
 
             if (!createdNew)
             {
@@ -35,13 +58,27 @@ public partial class App : System.Windows.Application
                 return;
             }
 
+            _shutdownEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShutdownEventName);
             NativeRas.EnsureProfileExists();
             LeakGuard.Enable(VpnName);
             SetupTrayIcon();
 
+            bool connectedAtStart = NativeRas.IsVpnConnected(VpnName);
+            bool hasSavedCredentials = NativeRas.HasSavedCredentials(VpnName);
+            _mainWindow = new LoginWindow(
+                VpnName,
+                initiallyConnected: connectedAtStart,
+                autoDialOnOpen: !connectedAtStart && hasSavedCredentials,
+                showCredentials: !connectedAtStart && !hasSavedCredentials);
+            MainWindow = _mainWindow;
+            _mainWindow.Closed += (_, _) => ExitCleanly();
+            _mainWindow.DisconnectRequested += (_, _) => DisconnectByUser();
+            _mainWindow.Show();
+
             _cts = new CancellationTokenSource();
             StartWakeListener(_cts.Token);
-            StartWatchdogLoop(_cts.Token);
+            StartShutdownListener(_cts.Token);
+            StartWatchdogLoop(_cts.Token, connectedAtStart);
         }
         catch (Exception ex)
         {
@@ -75,14 +112,10 @@ public partial class App : System.Windows.Application
         var menu = new Forms.ContextMenuStrip();
 
         var openItem = new Forms.ToolStripMenuItem("Open / Reconnect Tunnel");
-        openItem.Click += (_, _) => ShowPrompt(isTrip: false, stamp: "", autoDial: false);
+        openItem.Click += (_, _) => ShowMainWindow();
 
         var disconnectItem = new Forms.ToolStripMenuItem("Disconnect & Close Port");
-        disconnectItem.Click += (_, _) =>
-        {
-            NativeRas.HangUpAndClosePort(VpnName);
-            NativeRas.FlushDnsCache();
-        };
+        disconnectItem.Click += (_, _) => DisconnectByUser();
 
         _startupMenuItem = new Forms.ToolStripMenuItem("Run at Windows Startup")
         {
@@ -112,14 +145,18 @@ public partial class App : System.Windows.Application
         menu.Items.Add(new Forms.ToolStripSeparator());
         menu.Items.Add(exitItem);
 
+        string executablePath = Environment.ProcessPath
+            ?? throw new InvalidOperationException("Could not determine the application path for its icon.");
+        _applicationIcon = Icon.ExtractAssociatedIcon(executablePath)
+            ?? throw new InvalidOperationException("Could not load the application icon.");
         _trayIcon = new Forms.NotifyIcon
         {
-            Icon = SystemIcons.Shield,
+            Icon = _applicationIcon,
             Text = $"{VpnName} Guard • Active",
             ContextMenuStrip = menu,
             Visible = true
         };
-        _trayIcon.DoubleClick += (_, _) => ShowPrompt(isTrip: false, stamp: "", autoDial: false);
+        _trayIcon.DoubleClick += (_, _) => ShowMainWindow();
     }
 
     private void StartWakeListener(CancellationToken token)
@@ -129,27 +166,77 @@ public partial class App : System.Windows.Application
             while (!token.IsCancellationRequested)
             {
                 if (_wakeEvent?.WaitOne(500) == true && !token.IsCancellationRequested)
-                    Dispatcher.Invoke(() => ShowPrompt(isTrip: false, stamp: "", autoDial: false));
+                    Dispatcher.Invoke(ShowMainWindow);
             }
         }, token);
     }
 
-    private void StartWatchdogLoop(CancellationToken token)
+    private void StartShutdownListener(CancellationToken token)
+    {
+        _ = Task.Run(() =>
+        {
+            try
+            {
+                while (!token.IsCancellationRequested)
+                {
+                    if (_shutdownEvent?.WaitOne(500) == true)
+                    {
+                        Dispatcher.Invoke(ExitCleanly);
+                        return;
+                    }
+                }
+            }
+            catch (ObjectDisposedException) when (token.IsCancellationRequested)
+            {
+            }
+        }, token);
+    }
+
+    private static bool RequestShutdownAndWait()
+    {
+        using var mutex = new Mutex(true, MutexName, out bool createdNew);
+        if (createdNew)
+        {
+            try
+            {
+                LeakGuard.Restore(VpnName);
+                return true;
+            }
+            finally
+            {
+                mutex.ReleaseMutex();
+            }
+        }
+
+        using var shutdownEvent = new EventWaitHandle(false, EventResetMode.AutoReset, ShutdownEventName);
+        shutdownEvent.Set();
+        try
+        {
+            if (!mutex.WaitOne(TimeSpan.FromSeconds(20)))
+                return false;
+            mutex.ReleaseMutex();
+            return true;
+        }
+        catch (AbandonedMutexException)
+        {
+            LeakGuard.Restore(VpnName);
+            mutex.ReleaseMutex();
+            return true;
+        }
+    }
+
+    private void StartWatchdogLoop(CancellationToken token, bool initiallyConnected)
     {
         _ = Task.Run(async () =>
         {
             try
             {
-                bool wasConnected = NativeRas.IsVpnConnected(VpnName);
-                if (!wasConnected)
+                bool wasConnected = initiallyConnected;
+                await Dispatcher.InvokeAsync(() =>
                 {
-                    bool autoDial = NativeRas.HasSavedCredentials(VpnName);
-                    await Dispatcher.InvokeAsync(() => ShowPrompt(isTrip: false, stamp: "", autoDial: autoDial));
-                }
-                else
-                {
-                    await Dispatcher.InvokeAsync(() => UpdateTrayStatus(connected: true));
-                }
+                    _mainWindow?.UpdateWatchdogStatus(wasConnected);
+                    UpdateTrayStatus(wasConnected);
+                });
 
                 using var timer = new PeriodicTimer(TimeSpan.FromMilliseconds(25));
                 while (await timer.WaitForNextTickAsync(token))
@@ -157,24 +244,42 @@ public partial class App : System.Windows.Application
                     bool connected = NativeRas.IsVpnConnected(VpnName);
                     if (wasConnected && !connected)
                     {
+                        bool intentionalDisconnect = Interlocked.Exchange(ref _intentionalDisconnect, 0) == 1;
                         string stamp = DateTime.Now.ToString("HH:mm:ss.fff");
-                        NativeRas.FlushDnsCache();
-                        NativeRas.HangUpAndClosePort(VpnName);
+                        bool autoReconnect = false;
+                        if (!intentionalDisconnect)
+                        {
+                            NativeRas.FlushDnsCache();
+                            NativeRas.HangUpAndClosePort(VpnName);
+                            autoReconnect = NativeRas.HasSavedCredentials(VpnName);
+                        }
 
                         await Dispatcher.InvokeAsync(() =>
                         {
+                            if (intentionalDisconnect)
+                                _mainWindow?.SetManuallyDisconnected();
+                            else
+                                _mainWindow?.UpdateWatchdogStatus(connected: false, isTrip: true, stamp);
                             UpdateTrayStatus(connected: false);
-                            _trayIcon?.ShowBalloonTip(
-                                3000,
-                                $"{VpnName} Tripped!",
-                                $"Disconnected at {stamp}. Reconnect prompt opened.",
-                                Forms.ToolTipIcon.Error);
-                            ShowPrompt(isTrip: true, stamp: stamp, autoDial: false);
+                            if (!intentionalDisconnect)
+                            {
+                                _trayIcon?.ShowBalloonTip(
+                                    3000,
+                                    $"{VpnName} Disconnected",
+                                    $"Connection lost at {stamp}.",
+                                    Forms.ToolTipIcon.Error);
+                            }
+                            if (autoReconnect)
+                                _mainWindow?.BeginReconnect();
                         });
                     }
-                    else
+                    else if (connected != wasConnected)
                     {
-                        await Dispatcher.InvokeAsync(() => UpdateTrayStatus(connected));
+                        await Dispatcher.InvokeAsync(() =>
+                        {
+                            _mainWindow?.UpdateWatchdogStatus(connected);
+                            UpdateTrayStatus(connected);
+                        });
                     }
 
                     wasConnected = connected;
@@ -194,41 +299,43 @@ public partial class App : System.Windows.Application
         }, token);
     }
 
-    private void ShowPrompt(bool isTrip, string stamp, bool autoDial)
+    private void DisconnectByUser()
     {
-        if (_promptOpen)
-            return;
-        _promptOpen = true;
-
+        Interlocked.Exchange(ref _intentionalDisconnect, 1);
         try
         {
-            if (_startupMenuItem != null)
-                _startupMenuItem.Checked = StartupManager.IsEnabled();
-
-            var window = new LoginWindow(VpnName, isTrip, stamp, autoDial);
-            bool? connected = window.ShowDialog();
-
-            if (window.UserRequestedExit)
+            NativeRas.HangUpAndClosePort(VpnName);
+            NativeRas.FlushDnsCache();
+            if (NativeRas.IsVpnConnected(VpnName))
             {
-                ExitCleanly();
-                return;
+                Interlocked.Exchange(ref _intentionalDisconnect, 0);
+                throw new InvalidOperationException("The VPN is still connected.");
             }
 
-            if (connected == true || NativeRas.IsVpnConnected(VpnName))
-            {
-                NativeRas.FlushDnsCache();
-                UpdateTrayStatus(connected: true);
-                _trayIcon?.ShowBalloonTip(
-                    2500,
-                    $"{VpnName} Connected",
-                    "Tunnel active and leak guard armed.",
-                    Forms.ToolTipIcon.Info);
-            }
+            _mainWindow?.SetManuallyDisconnected();
+            UpdateTrayStatus(connected: false);
         }
-        finally
+        catch (Exception ex)
         {
-            _promptOpen = false;
+            if (NativeRas.IsVpnConnected(VpnName))
+                Interlocked.Exchange(ref _intentionalDisconnect, 0);
+            MessageBox.Show(ex.Message, "Could not disconnect", MessageBoxButton.OK, MessageBoxImage.Error);
         }
+    }
+
+    private void ShowMainWindow()
+    {
+        if (_mainWindow == null)
+            return;
+
+        if (_startupMenuItem != null)
+            _startupMenuItem.Checked = StartupManager.IsEnabled();
+
+        if (_mainWindow.WindowState == WindowState.Minimized)
+            _mainWindow.WindowState = WindowState.Normal;
+        _mainWindow.Show();
+        _mainWindow.ShowInTaskbar = true;
+        _mainWindow.Activate();
     }
 
     private void UpdateTrayStatus(bool connected)
@@ -242,7 +349,12 @@ public partial class App : System.Windows.Application
 
     private void ExitCleanly()
     {
+        if (_isExiting)
+            return;
+        _isExiting = true;
+
         _cts?.Cancel();
+        _mainWindow?.AllowApplicationExit();
         var failures = new List<string>();
         try
         {
@@ -267,6 +379,8 @@ public partial class App : System.Windows.Application
             _trayIcon.Dispose();
             _trayIcon = null;
         }
+        _applicationIcon?.Dispose();
+        _applicationIcon = null;
 
         if (_singleInstanceMutex != null)
         {
@@ -276,6 +390,8 @@ public partial class App : System.Windows.Application
         }
         _wakeEvent?.Dispose();
         _wakeEvent = null;
+        _shutdownEvent?.Dispose();
+        _shutdownEvent = null;
         _cts?.Dispose();
         _cts = null;
 

@@ -18,3 +18,7 @@ C:\Users\sekoz\MandelaVPN2.0\MandelaVpnGuard\obj\Release\net8.0-windows\refint\M
 C:\Users\sekoz\MandelaVPN2.0\MandelaVpnGuard\obj\Release\net8.0-windows\MandelaVpnGuard.pdb
 C:\Users\sekoz\MandelaVPN2.0\MandelaVpnGuard\obj\Release\net8.0-windows\MandelaVpnGuard.genruntimeconfig.cache
 C:\Users\sekoz\MandelaVPN2.0\MandelaVpnGuard\obj\Release\net8.0-windows\ref\MandelaVpnGuard.dll
+C:\Users\sekoz\MandelaVPN2.0\MandelaVpnGuard\verify-build\MandelaVpnGuard.deps.json
+C:\Users\sekoz\MandelaVPN2.0\MandelaVpnGuard\verify-build\MandelaVpnGuard.runtimeconfig.json
+C:\Users\sekoz\MandelaVPN2.0\MandelaVpnGuard\verify-build\MandelaVpnGuard.dll
+C:\Users\sekoz\MandelaVPN2.0\MandelaVpnGuard\verify-build\MandelaVpnGuard.pdb

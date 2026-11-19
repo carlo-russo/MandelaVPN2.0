@@ -2,10 +2,11 @@
         xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
         xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
         Title="Mandela VPN"
+        Icon="pack://application:,,,/Assets/MandelaVpnGuard.ico"
         Width="445" SizeToContent="Height"
         WindowStartupLocation="CenterScreen"
-        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
-        Topmost="True" ShowInTaskbar="True">
+        WindowStyle="SingleBorderWindow" ResizeMode="CanMinimize"
+        Background="#0F172A" Topmost="False" ShowInTaskbar="True">
     <Border x:Name="OuterBorder" Background="#0F172A" BorderBrush="#38BDF8" BorderThickness="1.5" CornerRadius="12" Margin="12">
         <Border.Effect>
             <DropShadowEffect Color="#000000" BlurRadius="22" ShadowDepth="4" Opacity="0.65"/>
@@ -18,29 +19,33 @@
                 </Border>
                 <Button x:Name="BtnMinimize" Content="—" HorizontalAlignment="Right" Width="26" Height="26"
                         Background="Transparent" Foreground="#94A3B8" BorderThickness="0"
-                        FontSize="13" FontWeight="Bold" Cursor="Hand" ToolTip="Hide to System Tray"
+                        FontSize="13" FontWeight="Bold" Cursor="Hand" ToolTip="Minimize to Taskbar"
                         Click="BtnMinimize_Click"/>
             </Grid>
 
             <TextBlock Text="Mandela VPN" Foreground="#F8FAFC" FontSize="21" FontWeight="SemiBold" FontFamily="Segoe UI"/>
-            <TextBlock x:Name="SubText" Text="Leave password blank to dial using your saved Windows credentials."
+            <TextBlock x:Name="SubText" Text="Connect with your saved login or enter your password."
                        Foreground="#94A3B8" FontSize="12.5" TextWrapping="Wrap" Margin="0,6,0,16" FontFamily="Segoe UI"/>
 
-            <TextBlock Text="NMU STUDENT USERNAME" Foreground="#CBD5E1" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5" FontFamily="Segoe UI"/>
-            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Margin="0,0,0,12">
-                <TextBox x:Name="TxtUser" Background="Transparent" Foreground="#F8FAFC" CaretBrush="#38BDF8"
-                         BorderThickness="0" Padding="10,9" FontSize="13.5" FontFamily="Segoe UI"/>
-            </Border>
-
-            <TextBlock Text="PASSWORD (BLANK = USE SAVED LOGIN)" Foreground="#CBD5E1" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5" FontFamily="Segoe UI"/>
-            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Margin="0,0,0,12">
-                <PasswordBox x:Name="TxtPass" Background="Transparent" Foreground="#F8FAFC" CaretBrush="#38BDF8"
+            <StackPanel x:Name="CredentialsPanel">
+                <TextBlock Text="USERNAME" Foreground="#CBD5E1" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5" FontFamily="Segoe UI"/>
+                <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Margin="0,0,0,12">
+                    <TextBox x:Name="TxtUser" Background="Transparent" Foreground="#F8FAFC" CaretBrush="#38BDF8"
                              BorderThickness="0" Padding="10,9" FontSize="13.5" FontFamily="Segoe UI"/>
-            </Border>
+                </Border>
 
-            <CheckBox x:Name="ChkStartup" Content="Run automatically at Windows startup (no UAC prompt)"
-                      Foreground="#CBD5E1" FontSize="12" Margin="0,0,0,12" Cursor="Hand"
-                      Checked="ChkStartup_Changed" Unchecked="ChkStartup_Changed"/>
+                <TextBlock Text="PASSWORD" Foreground="#CBD5E1" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5" FontFamily="Segoe UI"/>
+                <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Margin="0,0,0,12">
+                    <PasswordBox x:Name="TxtPass" Background="Transparent" Foreground="#F8FAFC" CaretBrush="#38BDF8"
+                                 BorderThickness="0" Padding="10,9" FontSize="13.5" FontFamily="Segoe UI"/>
+                </Border>
+            </StackPanel>
+
+            <Border Background="#172554" BorderBrush="#2563EB" BorderThickness="1" CornerRadius="6" Padding="10,8" Margin="0,0,0,12">
+                <CheckBox x:Name="ChkStartup" Content="Start with Windows"
+                          Foreground="#F8FAFC" FontSize="13" FontWeight="SemiBold" Cursor="Hand"
+                          Checked="ChkStartup_Changed" Unchecked="ChkStartup_Changed"/>
+            </Border>
 
             <TextBlock x:Name="TxtStatus" Text="" Foreground="#38BDF8" FontSize="12" TextWrapping="Wrap"
                        Margin="0,0,0,12" Visibility="Collapsed" FontFamily="Segoe UI"/>
@@ -68,6 +73,8 @@
                     </Button.Resources>
                 </Button>
             </Grid>
+            <TextBlock HorizontalAlignment="Center" Margin="0,14,0,0" Foreground="#94A3B8"
+                       FontSize="11" FontFamily="Segoe UI" Text="Support: phemelosecwalo@sekozal.app"/>
         </StackPanel>
     </Border>
 </Window>

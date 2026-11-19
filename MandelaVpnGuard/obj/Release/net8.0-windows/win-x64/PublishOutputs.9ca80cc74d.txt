@@ -1,0 +1,2 @@
+C:\Users\sekoz\MandelaVPN2.0\MandelaVpnGuard\publish-installer\MandelaVpnGuard.pdb
+C:\Users\sekoz\MandelaVPN2.0\MandelaVpnGuard\publish-installer\MandelaVpnGuard.exe
