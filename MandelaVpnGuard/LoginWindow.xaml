@@ -1,0 +1,73 @@
+<Window x:Class="MandelaVpnGuard.LoginWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        Title="Mandela VPN"
+        Width="445" SizeToContent="Height"
+        WindowStartupLocation="CenterScreen"
+        WindowStyle="None" AllowsTransparency="True" Background="Transparent"
+        Topmost="True" ShowInTaskbar="True">
+    <Border x:Name="OuterBorder" Background="#0F172A" BorderBrush="#38BDF8" BorderThickness="1.5" CornerRadius="12" Margin="12">
+        <Border.Effect>
+            <DropShadowEffect Color="#000000" BlurRadius="22" ShadowDepth="4" Opacity="0.65"/>
+        </Border.Effect>
+        <StackPanel Margin="24,20,24,24">
+            <Grid Margin="0,0,0,14">
+                <Border x:Name="BadgeBorder" Background="#172554" CornerRadius="5" Padding="9,4" HorizontalAlignment="Left">
+                    <TextBlock x:Name="BadgeText" Text="MANDELA VPN • NATIVE RAS" Foreground="#93C5FD"
+                               FontSize="11" FontWeight="Bold" FontFamily="Segoe UI"/>
+                </Border>
+                <Button x:Name="BtnMinimize" Content="—" HorizontalAlignment="Right" Width="26" Height="26"
+                        Background="Transparent" Foreground="#94A3B8" BorderThickness="0"
+                        FontSize="13" FontWeight="Bold" Cursor="Hand" ToolTip="Hide to System Tray"
+                        Click="BtnMinimize_Click"/>
+            </Grid>
+
+            <TextBlock Text="Mandela VPN" Foreground="#F8FAFC" FontSize="21" FontWeight="SemiBold" FontFamily="Segoe UI"/>
+            <TextBlock x:Name="SubText" Text="Leave password blank to dial using your saved Windows credentials."
+                       Foreground="#94A3B8" FontSize="12.5" TextWrapping="Wrap" Margin="0,6,0,16" FontFamily="Segoe UI"/>
+
+            <TextBlock Text="NMU STUDENT USERNAME" Foreground="#CBD5E1" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5" FontFamily="Segoe UI"/>
+            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Margin="0,0,0,12">
+                <TextBox x:Name="TxtUser" Background="Transparent" Foreground="#F8FAFC" CaretBrush="#38BDF8"
+                         BorderThickness="0" Padding="10,9" FontSize="13.5" FontFamily="Segoe UI"/>
+            </Border>
+
+            <TextBlock Text="PASSWORD (BLANK = USE SAVED LOGIN)" Foreground="#CBD5E1" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5" FontFamily="Segoe UI"/>
+            <Border Background="#1E293B" BorderBrush="#334155" BorderThickness="1" CornerRadius="6" Margin="0,0,0,12">
+                <PasswordBox x:Name="TxtPass" Background="Transparent" Foreground="#F8FAFC" CaretBrush="#38BDF8"
+                             BorderThickness="0" Padding="10,9" FontSize="13.5" FontFamily="Segoe UI"/>
+            </Border>
+
+            <CheckBox x:Name="ChkStartup" Content="Run automatically at Windows startup (no UAC prompt)"
+                      Foreground="#CBD5E1" FontSize="12" Margin="0,0,0,12" Cursor="Hand"
+                      Checked="ChkStartup_Changed" Unchecked="ChkStartup_Changed"/>
+
+            <TextBlock x:Name="TxtStatus" Text="" Foreground="#38BDF8" FontSize="12" TextWrapping="Wrap"
+                       Margin="0,0,0,12" Visibility="Collapsed" FontFamily="Segoe UI"/>
+
+            <Grid Margin="0,4,0,0">
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="*"/>
+                    <ColumnDefinition Width="10"/>
+                    <ColumnDefinition Width="1.4*"/>
+                </Grid.ColumnDefinitions>
+                <Button x:Name="BtnExit" Grid.Column="0" Content="Exit &amp; Close Port" Height="38"
+                        Background="#1E293B" Foreground="#CBD5E1" BorderBrush="#334155" BorderThickness="1"
+                        FontSize="13" FontWeight="SemiBold" Cursor="Hand" FontFamily="Segoe UI"
+                        Click="BtnExit_Click">
+                    <Button.Resources>
+                        <Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style>
+                    </Button.Resources>
+                </Button>
+                <Button x:Name="BtnConnect" Grid.Column="2" Content="Reconnect Tunnel" Height="38" IsDefault="True"
+                        Background="#10B981" Foreground="#052E16" BorderThickness="0"
+                        FontSize="13.5" FontWeight="Bold" Cursor="Hand" FontFamily="Segoe UI"
+                        Click="BtnConnect_Click">
+                    <Button.Resources>
+                        <Style TargetType="Border"><Setter Property="CornerRadius" Value="6"/></Style>
+                    </Button.Resources>
+                </Button>
+            </Grid>
+        </StackPanel>
+    </Border>
+</Window>
