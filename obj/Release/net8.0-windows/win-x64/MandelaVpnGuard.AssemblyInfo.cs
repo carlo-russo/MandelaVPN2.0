@@ -13,7 +13,7 @@ using System.Reflection;
 [assembly: System.Reflection.AssemblyCompanyAttribute("MandelaVpnGuard")]
 [assembly: System.Reflection.AssemblyConfigurationAttribute("Release")]
 [assembly: System.Reflection.AssemblyFileVersionAttribute("1.0.0.0")]
-[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0")]
+[assembly: System.Reflection.AssemblyInformationalVersionAttribute("1.0.0+ddb699c89418977cfd49cec0128f18856126cb36")]
 [assembly: System.Reflection.AssemblyProductAttribute("MandelaVpnGuard")]
 [assembly: System.Reflection.AssemblyTitleAttribute("MandelaVpnGuard")]
 [assembly: System.Reflection.AssemblyVersionAttribute("1.0.0.0")]

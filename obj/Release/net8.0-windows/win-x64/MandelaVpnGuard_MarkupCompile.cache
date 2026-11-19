@@ -4,12 +4,12 @@
 winexe
 C#
 .cs
-C:\Users\sekoz\MandelaVPN2.0\MandelaVpnGuard\obj\Release\net8.0-windows\win-x64\
+C:\Users\sekoz\MandelaVPN2.0\obj\Release\net8.0-windows\win-x64\
 MandelaVpnGuard
 none
 false
 TRACE;RELEASE;NET;NET8_0;NETCOREAPP
-C:\Users\sekoz\MandelaVPN2.0\MandelaVpnGuard\App.xaml
+C:\Users\sekoz\MandelaVPN2.0\App.xaml
 1-1623698816
 
 52139140398

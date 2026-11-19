@@ -259,7 +259,7 @@ public partial class App : System.Windows.Application
                             if (intentionalDisconnect)
                                 _mainWindow?.SetManuallyDisconnected();
                             else
-                                _mainWindow?.UpdateWatchdogStatus(connected: false, isTrip: true, stamp);
+                                _mainWindow?.UpdateWatchdogStatus(connected: false, isTrip: true);
                             UpdateTrayStatus(connected: false);
                             if (!intentionalDisconnect)
                             {

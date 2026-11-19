@@ -1,17 +1,17 @@
 {
   "format": 1,
   "restore": {
-    "C:\\Users\\sekoz\\MandelaVPN2.0\\MandelaVpnGuard\\MandelaVpnGuard.csproj": {}
+    "C:\\Users\\sekoz\\MandelaVPN2.0\\MandelaVpnGuard.csproj": {}
   },
   "projects": {
-    "C:\\Users\\sekoz\\MandelaVPN2.0\\MandelaVpnGuard\\MandelaVpnGuard.csproj": {
+    "C:\\Users\\sekoz\\MandelaVPN2.0\\MandelaVpnGuard.csproj": {
       "version": "1.0.0",
       "restore": {
-        "projectUniqueName": "C:\\Users\\sekoz\\MandelaVPN2.0\\MandelaVpnGuard\\MandelaVpnGuard.csproj",
+        "projectUniqueName": "C:\\Users\\sekoz\\MandelaVPN2.0\\MandelaVpnGuard.csproj",
         "projectName": "MandelaVpnGuard",
-        "projectPath": "C:\\Users\\sekoz\\MandelaVPN2.0\\MandelaVpnGuard\\MandelaVpnGuard.csproj",
+        "projectPath": "C:\\Users\\sekoz\\MandelaVPN2.0\\MandelaVpnGuard.csproj",
         "packagesPath": "C:\\Users\\sekoz\\.nuget\\packages\\",
-        "outputPath": "C:\\Users\\sekoz\\MandelaVPN2.0\\MandelaVpnGuard\\obj\\",
+        "outputPath": "C:\\Users\\sekoz\\MandelaVPN2.0\\obj\\",
         "projectStyle": "PackageReference",
         "configFilePaths": [
           "C:\\Users\\sekoz\\AppData\\Roaming\\NuGet\\NuGet.Config"

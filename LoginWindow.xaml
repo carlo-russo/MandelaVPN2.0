@@ -24,8 +24,6 @@
             </Grid>
 
             <TextBlock Text="Mandela VPN" Foreground="#F8FAFC" FontSize="21" FontWeight="SemiBold" FontFamily="Segoe UI"/>
-            <TextBlock x:Name="SubText" Text="Connect with your saved login or enter your password."
-                       Foreground="#94A3B8" FontSize="12.5" TextWrapping="Wrap" Margin="0,6,0,16" FontFamily="Segoe UI"/>
 
             <StackPanel x:Name="CredentialsPanel">
                 <TextBlock Text="USERNAME" Foreground="#CBD5E1" FontSize="11" FontWeight="SemiBold" Margin="0,0,0,5" FontFamily="Segoe UI"/>

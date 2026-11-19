@@ -160,7 +160,6 @@ public partial class LoginWindow : Window
     public void SetManuallyDisconnected()
     {
         UpdateWatchdogStatus(connected: false);
-        SubText.Text = "Disconnected.";
         TxtStatus.Text = "Disconnected.";
         CredentialsPanel.Visibility = Visibility.Collapsed;
     }
@@ -180,7 +179,7 @@ public partial class LoginWindow : Window
         base.OnClosing(e);
     }
 
-    public void UpdateWatchdogStatus(bool connected, bool isTrip = false, string tripStamp = "")
+    public void UpdateWatchdogStatus(bool connected, bool isTrip = false)
     {
         if (connected)
         {
@@ -188,7 +187,6 @@ public partial class LoginWindow : Window
             BadgeBorder.Background = new SolidColorBrush(Color.FromRgb(6, 55, 42));
             BadgeText.Foreground = new SolidColorBrush(Color.FromRgb(110, 231, 183));
             BadgeText.Text = "MANDELA VPN • CONNECTED";
-            SubText.Text = "Connected.";
             TxtStatus.Foreground = new SolidColorBrush(Color.FromRgb(110, 231, 183));
             TxtStatus.Text = "Connected.";
             TxtStatus.Visibility = Visibility.Visible;
@@ -213,14 +211,12 @@ public partial class LoginWindow : Window
 
         if (isTrip)
         {
-            SubText.Text = $"Connection lost at {tripStamp}. Reconnecting...";
             TxtStatus.Foreground = new SolidColorBrush(Color.FromRgb(248, 113, 113));
             TxtStatus.Text = "Reconnecting...";
             SystemSounds.Hand.Play();
         }
         else
         {
-            SubText.Text = "Connect with your saved login or enter your password.";
             TxtStatus.Foreground = new SolidColorBrush(Color.FromRgb(148, 163, 184));
             TxtStatus.Text = "Not connected.";
         }

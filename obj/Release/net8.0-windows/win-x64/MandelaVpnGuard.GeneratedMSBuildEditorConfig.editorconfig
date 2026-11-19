@@ -18,6 +18,6 @@ build_property.PlatformNeutralAssembly =
 build_property.EnforceExtendedAnalyzerRules = 
 build_property._SupportedPlatformList = Linux,macOS,Windows
 build_property.RootNamespace = MandelaVpnGuard
-build_property.ProjectDir = C:\Users\sekoz\MandelaVPN2.0\MandelaVpnGuard\
+build_property.ProjectDir = C:\Users\sekoz\MandelaVPN2.0\
 build_property.EnableComHosting = 
 build_property.EnableGeneratedComInterfaceComImportInterop = 
